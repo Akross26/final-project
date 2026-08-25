@@ -30,8 +30,14 @@ func Init(dbFile string) error {
 		return err
 	}
 
+	if err = db.Ping(); err != nil {
+		db.Close()
+		return err
+	}
+
 	if install {
 		if _, err := db.Exec(schema); err != nil {
+			db.Close()
 			return err
 		}
 	}

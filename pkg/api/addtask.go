@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -15,9 +16,23 @@ type taskResponse struct {
 	Error string `json:"error,omitempty"`
 }
 
-func writeJson(w http.ResponseWriter, data any) {
+func writeJson(w http.ResponseWriter, code int, data any) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	json.NewEncoder(w).Encode(data)
+	w.WriteHeader(code)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		log.Printf("writeJson: %v", err)
+	}
+}
+
+func writeError(w http.ResponseWriter, code int, msg string) {
+	writeJson(w, code, taskResponse{Error: msg})
+}
+
+func dbStatus(err error) int {
+	if err != nil && err.Error() == "задача не найдена" {
+		return http.StatusNotFound
+	}
+	return http.StatusInternalServerError
 }
 
 func checkDate(task *db.Task) error {
@@ -56,22 +71,22 @@ func addTaskHandler(w http.ResponseWriter, r *http.Request) {
 	var task db.Task
 
 	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
-		writeJson(w, taskResponse{Error: "ошибка десериализации JSON"})
+		writeError(w, http.StatusBadRequest, "ошибка десериализации JSON")
 		return
 	}
 
 	if err := validateTask(&task); err != nil {
-		writeJson(w, taskResponse{Error: err.Error()})
+		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	id, err := db.AddTask(&task)
 	if err != nil {
-		writeJson(w, taskResponse{Error: err.Error()})
+		writeError(w, dbStatus(err), err.Error())
 		return
 	}
 
-	writeJson(w, taskResponse{ID: strconv.FormatInt(id, 10)})
+	writeJson(w, http.StatusOK, taskResponse{ID: strconv.FormatInt(id, 10)})
 }
 
 func validateTask(task *db.Task) error {

@@ -11,18 +11,27 @@ import (
 )
 
 func main() {
+	if err := run(); err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
 	port := os.Getenv("TODO_PORT")
 	if port == "" {
 		port = "7540"
 	}
 
-	if err := db.Init("scheduler.db"); err != nil {
-		log.Fatal(err)
+	dbFile := os.Getenv("TODO_DBFILE")
+	if dbFile == "" {
+		dbFile = "scheduler.db"
 	}
 
+	if err := db.Init(dbFile); err != nil {
+		return err
+	}
 	defer db.Close()
 
-	if err := server.StartServer(port); err != nil {
-		log.Fatal(err)
-	}
+	return server.StartServer(port)
 }

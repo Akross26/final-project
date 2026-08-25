@@ -10,14 +10,14 @@ func deleteTaskHandler(w http.ResponseWriter, r *http.Request) {
 	id := r.FormValue("id")
 
 	if id == "" {
-		writeJson(w, taskResponse{Error: "не указан идентификатор"})
+		writeError(w, http.StatusBadRequest, "не указан идентификатор")
 		return
 	}
 
 	if err := db.DeleteTask(id); err != nil {
-		writeJson(w, taskResponse{Error: err.Error()})
+		writeError(w, dbStatus(err), err.Error())
 		return
 	}
 
-	writeJson(w, struct{}{})
+	writeJson(w, http.StatusOK, struct{}{})
 }

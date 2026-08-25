@@ -147,7 +147,8 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 			}
 		}
 
-		for {
+		const maxShift = 4000
+		for i := 0; i < maxShift; i++ {
 			date = date.AddDate(0, 0, 1)
 
 			if len(months) > 0 {
@@ -177,17 +178,21 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 			}
 
 			if dayOk && afterNow(date, now) {
-				break
+				return date.Format(dateFormat), nil
 			}
 		}
 
-		return date.Format(dateFormat), nil
+		return "", errors.New("не найдена следующая дата")
 	}
 
 	return "", errors.New("неизвестный формат правила")
 }
 
 func nextDayHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "метод не поддерживается", http.StatusMethodNotAllowed)
+		return
+	}
 
 	nowStr := r.FormValue("now")
 	dateStr := r.FormValue("date")

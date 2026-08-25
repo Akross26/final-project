@@ -8,38 +8,43 @@ import (
 )
 
 func doneTaskHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "метод не поддерживается")
+		return
+	}
+
 	id := r.FormValue("id")
 
 	if id == "" {
-		writeJson(w, taskResponse{Error: "не указан идентификатор"})
+		writeError(w, http.StatusBadRequest, "не указан идентификатор")
 		return
 	}
 
 	task, err := db.GetTask(id)
 	if err != nil {
-		writeJson(w, taskResponse{Error: err.Error()})
+		writeError(w, dbStatus(err), err.Error())
 		return
 	}
 
 	if task.Repeat == "" {
 		if err := db.DeleteTask(id); err != nil {
-			writeJson(w, taskResponse{Error: err.Error()})
+			writeError(w, dbStatus(err), err.Error())
 			return
 		}
-		writeJson(w, struct{}{})
+		writeJson(w, http.StatusOK, struct{}{})
 		return
 	}
 
 	next, err := NextDate(time.Now(), task.Date, task.Repeat)
 	if err != nil {
-		writeJson(w, taskResponse{Error: err.Error()})
+		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	if err := db.UpdateDate(next, id); err != nil {
-		writeJson(w, taskResponse{Error: err.Error()})
+		writeError(w, dbStatus(err), err.Error())
 		return
 	}
 
-	writeJson(w, struct{}{})
+	writeJson(w, http.StatusOK, struct{}{})
 }

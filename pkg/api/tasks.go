@@ -12,8 +12,14 @@ type TasksResp struct {
 }
 
 const searchDateFormat = "02.01.2006"
+const tasksLimit = 50
 
 func tasksHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "метод не поддерживается")
+		return
+	}
+
 	search := r.FormValue("search")
 
 	var (
@@ -23,22 +29,22 @@ func tasksHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch {
 	case search == "":
-		tasks, err = db.Tasks(50)
+		tasks, err = db.Tasks(tasksLimit)
 
 	case isDate(search):
 		date, _ := time.Parse(searchDateFormat, search)
-		tasks, err = db.TasksByDate(date.Format(dateFormat), 50)
+		tasks, err = db.TasksByDate(date.Format(dateFormat), tasksLimit)
 
 	default:
-		tasks, err = db.TasksSearch(search, 50)
+		tasks, err = db.TasksSearch(search, tasksLimit)
 	}
 
 	if err != nil {
-		writeJson(w, taskResponse{Error: err.Error()})
+		writeError(w, dbStatus(err), err.Error())
 		return
 	}
 
-	writeJson(w, TasksResp{
+	writeJson(w, http.StatusOK, TasksResp{
 		Tasks: tasks,
 	})
 }
